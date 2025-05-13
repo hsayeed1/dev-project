@@ -107,8 +107,8 @@ resource "google_cloudfunctions2_function" "data_ingestion_function" {
 resource "google_cloud_scheduler_job" "daily_trigger" {
   name        = "daily-function-trigger"
   description = "Triggers the function daily via Pub/Sub"
-  schedule    = "0 9 * * *" # 9AM UTC daily
-  time_zone   = "UTC"
+  schedule    = "0 20 * * *"            # 20:00 = 8 PM
+  time_zone   = "America/New_York"      # NYC time zone
 
   pubsub_target {
     topic_name = google_pubsub_topic.trigger_topic.id
