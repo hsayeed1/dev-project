@@ -1,0 +1,4 @@
+pandas
+pyodbc
+google-cloud-bigquery
+functions-framework
