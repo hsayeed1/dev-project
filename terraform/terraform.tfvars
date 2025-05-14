@@ -1,2 +1,2 @@
 project_id = "dev-project-humayra"
-region     = "US"
+region     = "us-east1"

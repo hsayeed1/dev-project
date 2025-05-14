@@ -65,7 +65,7 @@ resource "google_storage_bucket" "function_bucket" {
 resource "google_storage_bucket_object" "function_zip" {
   name   = "function-source.zip"
   bucket = google_storage_bucket.function_bucket.name
-  source = "cloud-function/function-source.zip"  # You’ll zip it manually before deploy
+  source = "../cloud-function/function-source.zip" #zip it before apply
 }
 
 resource "google_cloudfunctions2_function" "data_ingestion_function" {
