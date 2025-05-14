@@ -4,3 +4,25 @@
 .terraform.lock.hcl
 *.log
 *.exe
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Terraform directories and files
+.terraform/
+*.tfstate
+*.tfstate.backup
+crash.log
+terraform.tfvars
+
+# Sensitive credential files
+*.json
+*.key
+
+# Zip file for old function packaging (no longer needed)
+function-source.zip
+
+# OS or editor files
+.DS_Store
+.vscode/
+*.swp
