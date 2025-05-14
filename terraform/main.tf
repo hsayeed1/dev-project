@@ -65,7 +65,7 @@ resource "google_pubsub_topic" "trigger_topic" {
   name = "cf-trigger-topic"
 }
 
-# Cloud Function using the container image from GCR
+/*# Cloud Function using the container image from GCR
 resource "google_cloudfunctions2_function" "data_ingestion_function" {
   name     = "load-to-bigquery"
   location = var.region
@@ -93,6 +93,33 @@ resource "google_cloudfunctions2_function" "data_ingestion_function" {
 
   event_trigger {
     event_type  = "google.cloud.pubsub.topic.v1.messagePublished"
+    pubsub_topic = google_pubsub_topic.trigger_topic.id
+    retry_policy = "RETRY_POLICY_DO_NOT_RETRY"
+  }
+}*/
+
+resource "google_cloudfunctions2_function" "data_ingestion_function" {
+  name     = "load-to-bigquery"
+  location = var.region
+  project  = var.project_id
+
+  # ✅ Use container_image directly under service_config
+  service_config {
+    container_image     = "gcr.io/dev-project-humayra/load-to-bigquery"
+    max_instance_count  = 1
+    available_memory    = "256M"
+    timeout_seconds     = 60
+    ingress_settings    = "ALLOW_ALL"
+    service_account_email = google_service_account.data_pipeline_sa.email
+
+    environment_variables = {
+      BQ_DATASET = google_bigquery_dataset.employees_data_dataset.dataset_id
+      BQ_TABLE   = google_bigquery_table.employees_table.table_id
+    }
+  }
+
+  event_trigger {
+    event_type   = "google.cloud.pubsub.topic.v1.messagePublished"
     pubsub_topic = google_pubsub_topic.trigger_topic.id
     retry_policy = "RETRY_POLICY_DO_NOT_RETRY"
   }
