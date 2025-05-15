@@ -2,7 +2,7 @@ terraform {
   required_providers {
     google = {
       source  = "hashicorp/google"
-      version = ">= 5.0.0"
+      version = ">= 6.0.0"
     }
   }
 
@@ -103,13 +103,17 @@ resource "google_cloudfunctions2_function" "data_ingestion_function" {
   location = var.region
   project  = var.project_id
 
-  # ✅ Use container_image directly under service_config
+  build_config {
+    runtime = "custom"          # usually 'custom' when using container image
+    entry_point = "load_to_bigquery"  # your function entry point
+    image = "gcr.io/dev-project-humayra/load-to-bigquery"  # <-- here is the image
+  }
+
   service_config {
-    container_image       = "gcr.io/dev-project-humayra/load-to-bigquery"
-    max_instance_count    = 1
-    available_memory      = "256M"
-    timeout_seconds       = 60
-    ingress_settings      = "ALLOW_ALL"
+    max_instance_count  = 1
+    available_memory    = "256M"
+    timeout_seconds     = 60
+    ingress_settings    = "ALLOW_ALL"
     service_account_email = google_service_account.data_pipeline_sa.email
 
     environment_variables = {
