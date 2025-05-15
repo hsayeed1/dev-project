@@ -71,12 +71,20 @@ resource "google_cloudfunctions2_function" "data_ingestion_function" {
   location = var.region
   project  = var.project_id
 
+  build_config {
+    runtime     = "custom"
+    entry_point = "load_to_bigquery"
+
+    source {
+      image = "gcr.io/dev-project-humayra/load-to-bigquery"
+    }
+  }
+
   service_config {
-    container_image     = "gcr.io/dev-project-humayra/load-to-bigquery"
-    max_instance_count  = 1
-    available_memory    = "256M"
-    timeout_seconds     = 60
-    ingress_settings    = "ALLOW_ALL"
+    max_instance_count    = 1
+    available_memory      = "256M"
+    timeout_seconds       = 60
+    ingress_settings      = "ALLOW_ALL"
     service_account_email = google_service_account.data_pipeline_sa.email
 
     environment_variables = {
