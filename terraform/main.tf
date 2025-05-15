@@ -20,8 +20,8 @@ resource "google_bigquery_dataset" "employees_data_dataset" {
 }
 
 resource "google_bigquery_table" "employees_table" {
-  dataset_id = google_bigquery_dataset.employees_data_dataset.dataset_id
-  table_id   = "employees_info"
+  dataset_id          = google_bigquery_dataset.employees_data_dataset.dataset_id
+  table_id            = "employees_info"
   deletion_protection = false
 
   schema = file("${path.module}/schemas/employees_schema.json")
@@ -105,11 +105,11 @@ resource "google_cloudfunctions2_function" "data_ingestion_function" {
 
   # ✅ Use container_image directly under service_config
   service_config {
-    container_image     = "gcr.io/dev-project-humayra/load-to-bigquery"
-    max_instance_count  = 1
-    available_memory    = "256M"
-    timeout_seconds     = 60
-    ingress_settings    = "ALLOW_ALL"
+    container_image       = "gcr.io/dev-project-humayra/load-to-bigquery"
+    max_instance_count    = 1
+    available_memory      = "256M"
+    timeout_seconds       = 60
+    ingress_settings      = "ALLOW_ALL"
     service_account_email = google_service_account.data_pipeline_sa.email
 
     environment_variables = {
@@ -129,8 +129,8 @@ resource "google_cloudfunctions2_function" "data_ingestion_function" {
 resource "google_cloud_scheduler_job" "daily_trigger" {
   name        = "daily-function-trigger"
   description = "Triggers the function daily via Pub/Sub"
-  schedule    = "0 22 * * *"            # 22:00 = 10 PM
-  time_zone   = "America/New_York"      # NYC time zone
+  schedule    = "0 22 * * *"       # 22:00 = 10 PM
+  time_zone   = "America/New_York" # NYC time zone
 
   pubsub_target {
     topic_name = google_pubsub_topic.trigger_topic.id
