@@ -65,42 +65,55 @@ resource "google_pubsub_topic" "trigger_topic" {
   name = "cf-trigger-topic"
 }
 
-
-resource "google_cloudfunctions2_function" "data_ingestion_function" {
+# Cloud Run Service to run the containerized data ingestion function
+resource "google_cloud_run_service" "data_ingestion_service" {
   name     = "load-to-bigquery"
   location = var.region
   project  = var.project_id
 
-  build_config {
-    runtime     = "custom"
-    entry_point = "load_to_bigquery"
-
-    source {
-      image = "gcr.io/dev-project-humayra/load-to-bigquery"
+  template {
+    spec {
+      containers {
+        image = "gcr.io/dev-project-humayra/load-to-bigquery"
+        resources {
+          limits = {
+            memory = "256Mi"
+          }
+        }
+        env {
+          name  = "BQ_DATASET"
+          value = google_bigquery_dataset.employees_data_dataset.dataset_id
+        }
+        env {
+          name  = "BQ_TABLE"
+          value = google_bigquery_table.employees_table.table_id
+        }
+      }
+      service_account_name = google_service_account.data_pipeline_sa.email
+    }
+    metadata {
+      annotations = {
+        "autoscaling.knative.dev/maxScale" = "1"
+      }
     }
   }
 
-  service_config {
-    max_instance_count    = 1
-    available_memory      = "256M"
-    timeout_seconds       = 60
-    ingress_settings      = "ALLOW_ALL"
-    service_account_email = google_service_account.data_pipeline_sa.email
-
-    environment_variables = {
-      BQ_DATASET = google_bigquery_dataset.employees_data_dataset.dataset_id
-      BQ_TABLE   = google_bigquery_table.employees_table.table_id
-    }
-  }
-
-  event_trigger {
-    event_type   = "google.cloud.pubsub.topic.v1.messagePublished"
-    pubsub_topic = google_pubsub_topic.trigger_topic.id
-    retry_policy = "RETRY_POLICY_DO_NOT_RETRY"
+  traffic {
+    percent         = 100
+    latest_revision = true
   }
 }
 
-# Cloud Scheduler Job to trigger Cloud Function
+# Allow unauthenticated invocations (optional)
+resource "google_cloud_run_service_iam_member" "public_invoker" {
+  location = google_cloud_run_service.data_ingestion_service.location
+  project  = google_cloud_run_service.data_ingestion_service.project
+  service  = google_cloud_run_service.data_ingestion_service.name
+  role     = "roles/run.invoker"
+  member   = "allUsers"
+}
+
+# Cloud Scheduler Job to trigger Pub/Sub topic daily
 resource "google_cloud_scheduler_job" "daily_trigger" {
   name        = "daily-function-trigger"
   description = "Triggers the function daily via Pub/Sub"
@@ -118,6 +131,15 @@ resource "google_project_iam_member" "scheduler_pubsub_publisher" {
   project = var.project_id
   role    = "roles/pubsub.publisher"
   member  = "serviceAccount:service-${data.google_project.project.number}@gcp-sa-cloudscheduler.iam.gserviceaccount.com"
+}
+
+resource "google_pubsub_subscription" "cloud_run_sub" {
+  name  = "cloud-run-sub"
+  topic = google_pubsub_topic.trigger_topic.name
+
+  push_config {
+    push_endpoint = "https://load-to-bigquery-881002525671.us-central1.run.app"
+  }
 }
 
 data "google_project" "project" {
