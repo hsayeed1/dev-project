@@ -52,6 +52,9 @@ def load_csv_to_bigquery(cloud_event):
             autodetect=False,
         )
 
+        # Clean and convert created_at to proper TIMESTAMP format
+        df['created_at'] = pd.to_datetime(df['created_at'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
+
         # Load data from DataFrame directly using load_table_from_dataframe
         load_job = bq_client.load_table_from_dataframe(df, table_ref, job_config=job_config)
         load_job.result()  # Wait for the job to complete
