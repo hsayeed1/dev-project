@@ -1,71 +1,62 @@
 import functions_framework
-import json
-import pandas as pd
-import pyodbc
-from google.cloud import bigquery
-import logging
 import os
+from google.cloud import storage, bigquery
+import pandas as pd
+import logging
+from io import StringIO
 
-# Set up logging
 logging.basicConfig(level=logging.INFO)
 
-# Cloud Function entry point
 @functions_framework.cloud_event
-def load_to_bigquery(cloud_event):
-    logging.info("Function triggered by Cloud Scheduler via Pub/Sub")
-
-    # Path to your .accdb file in Cloud Function environment or mounted storage
-    access_db_path = 'C:/Users/humay/git/dev-project/employees.accdb'  # Update if needed
-    table_name = 'employees'
-
-    # Connect to Access DB (must be available in /tmp or pre-mounted path)
+def load_csv_to_bigquery(cloud_event):
     try:
-        conn_str = (
-            r'DRIVER={Microsoft Access Driver (*.mdb, *.accdb)};'
-            fr'DBQ={access_db_path};'
-        )
-        conn = pyodbc.connect(conn_str)
-        df = pd.read_sql(f'SELECT * FROM {table_name}', conn)
-        logging.info("Data extracted from Access DB")
-    except Exception as e:
-        logging.error(f"Failed to extract data from Access DB: {e}")
-        return
+        # GCS bucket and file details
+        bucket_name = 'employees-data-bucket-dev-project-humayra'
+        csv_filename = 'employees.csv'
 
-    # Convert to JSON records
-    records = df.to_dict(orient='records')
-
-    # Load to BigQuery
-    try:
-        client = bigquery.Client()
+        # BigQuery dataset and table from env vars
         dataset_id = os.environ.get('BQ_DATASET')
         table_id = os.environ.get('BQ_TABLE')
 
-        table_ref = f"{client.project}.{dataset_id}.{table_id}"
+        # Initialize clients
+        storage_client = storage.Client()
+        bq_client = bigquery.Client()
 
+        # Download CSV file content from GCS
+        bucket = storage_client.bucket(bucket_name)
+        blob = bucket.blob(csv_filename)
+        csv_data = blob.download_as_text()
+
+        logging.info("CSV file downloaded from GCS")
+
+        # Read CSV into pandas DataFrame
+        df = pd.read_csv(StringIO(csv_data))
+
+        logging.info(f"CSV loaded into DataFrame with {len(df)} rows")
+
+        # Define BigQuery table reference
+        table_ref = bq_client.dataset(dataset_id).table(table_id)
+
+        # Define job config with schema and write disposition
         job_config = bigquery.LoadJobConfig(
+            write_disposition=bigquery.WriteDisposition.WRITE_APPEND,
             schema=[
                 bigquery.SchemaField("customer_id", "STRING"),
                 bigquery.SchemaField("first_name", "STRING"),
                 bigquery.SchemaField("last_name", "STRING"),
                 bigquery.SchemaField("email", "STRING"),
-                bigquery.SchemaField("created_at", "TIMESTAMP")
+                bigquery.SchemaField("created_at", "DATE"),  # since your CSV has no time
             ],
-            write_disposition="WRITE_APPEND",
-            source_format=bigquery.SourceFormat.NEWLINE_DELIMITED_JSON,
+            source_format=bigquery.SourceFormat.CSV,
+            skip_leading_rows=1,
             autodetect=False,
         )
 
-        # Write to a temporary JSON file
-        tmp_json_path = "/tmp/employees.json"
-        with open(tmp_json_path, "w") as f:
-            for record in records:
-                json.dump(record, f)
-                f.write("\n")
+        # Load data from DataFrame directly using load_table_from_dataframe
+        load_job = bq_client.load_table_from_dataframe(df, table_ref, job_config=job_config)
+        load_job.result()  # Wait for the job to complete
 
-        with open(tmp_json_path, "rb") as source_file:
-            job = client.load_table_from_file(source_file, table_ref, job_config=job_config)
-            job.result()  # Waits for the job to finish
-            logging.info("Data loaded to BigQuery")
+        logging.info("Data loaded to BigQuery successfully")
 
     except Exception as e:
-        logging.error(f"Failed to load data to BigQuery: {e}")
+        logging.error(f"Error loading CSV to BigQuery: {e}")

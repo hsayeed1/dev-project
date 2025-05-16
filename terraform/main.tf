@@ -117,7 +117,7 @@ resource "google_cloud_run_service_iam_member" "public_invoker" {
 resource "google_cloud_scheduler_job" "daily_trigger" {
   name        = "daily-function-trigger"
   description = "Triggers the function daily via Pub/Sub"
-  schedule    = "0 22 * * *"       # 22:00 = 10 PM
+  schedule    = "0 24 * * *"       # 24:00 = 10 PM
   time_zone   = "America/New_York" # NYC time zone
 
   pubsub_target {
@@ -138,7 +138,7 @@ resource "google_pubsub_subscription" "cloud_run_sub" {
   topic = google_pubsub_topic.trigger_topic.name
 
   push_config {
-    push_endpoint = "https://load-to-bigquery-881002525671.us-central1.run.app"
+    push_endpoint = "https://load-to-bigquery-881002525671.${var.region}.run.app"
   }
 }
 

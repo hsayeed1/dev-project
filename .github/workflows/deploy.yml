@@ -1,0 +1,30 @@
+name: Build and Deploy Cloud Run
+
+on:
+  push:
+    paths:
+      - 'cloud-function/**'
+      - 'Dockerfile'
+      - '.github/workflows/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: 'google-github-actions/auth@v1'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - uses: 'google-github-actions/setup-gcloud@v1'
+
+      - run: gcloud config set project dev-project-humayra
+
+      - run: |
+          gcloud builds submit --tag gcr.io/dev-project-humayra/load-to-bigquery
+          gcloud run deploy load-to-bigquery \
+            --image gcr.io/dev-project-humayra/load-to-bigquery \
+            --region us-east1 \
+            --platform managed \
+            --allow-unauthenticated
