@@ -13,6 +13,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy your source code
 COPY . .
 
-# Set env port and run the function
+# Set port and expose it
 ENV PORT=8080
-CMD ["functions-framework", "--target", "load_to_bigquery"]
+EXPOSE 8080
+
+# Start the functions framework
+CMD ["functions-framework", "--target", "load_csv_to_bigquery"]
