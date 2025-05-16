@@ -117,7 +117,7 @@ resource "google_cloud_run_service_iam_member" "public_invoker" {
 resource "google_cloud_scheduler_job" "daily_trigger" {
   name        = "daily-function-trigger"
   description = "Triggers the function daily via Pub/Sub"
-  schedule    = "0 0 * * *"       # 12:00 AM daily
+  schedule    = "15 0 * * *"       # 12:00 AM daily
   time_zone   = "America/New_York" # NYC time zone
 
   pubsub_target {
