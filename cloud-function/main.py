@@ -45,7 +45,7 @@ def load_csv_to_bigquery(cloud_event):
                 bigquery.SchemaField("first_name", "STRING"),
                 bigquery.SchemaField("last_name", "STRING"),
                 bigquery.SchemaField("email", "STRING"),
-                bigquery.SchemaField("created_at", "DATE"),  # since your CSV has no time
+                bigquery.SchemaField("created_at", "TIMESTAMP"),  # since your CSV has no time
             ],
             source_format=bigquery.SourceFormat.CSV,
             skip_leading_rows=1,
