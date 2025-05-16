@@ -142,6 +142,23 @@ resource "google_pubsub_subscription" "cloud_run_sub" {
   }
 }
 
+#retry 
+resource "google_pubsub_subscription" "cloud_run_sub" {
+  name  = "cloud-run-sub"
+  topic = google_pubsub_topic.trigger_topic.name
+
+  push_config {
+    push_endpoint = "https://load-to-bigquery-881002525671.us-east1.run.app"
+  }
+
+  ack_deadline_seconds = 20
+
+  retry_policy {
+    minimum_backoff = "10s"
+    maximum_backoff = "600s"
+  }
+}
+
 data "google_project" "project" {
   project_id = var.project_id
 }
