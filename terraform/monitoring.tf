@@ -12,8 +12,6 @@ EOT
     value_type  = "INT64"
     unit        = "1"
   }
-
-  value_extractor = "EXTRACT(jsonPayload.jobChange.reason)"
 }
 
 resource "google_monitoring_notification_channel" "email_channel" {
@@ -29,33 +27,30 @@ resource "google_monitoring_alert_policy" "bq_job_failure_alert" {
   display_name = "BigQuery Job Failure Alert"
   combiner     = "OR"
 
-  notification_channels = [google_monitoring_notification_channel.email_channel.name]
-
   conditions {
-    display_name = "BigQuery Failed Jobs > 0"
+    display_name = "BigQuery Job Failures > 0"
 
     condition_threshold {
-      filter          = "metric.type=\"logging.googleapis.com/user/bigquery_job_failure_count\""
+      filter          = "resource.type=\"bigquery_project\" AND metric.type=\"logging.googleapis.com/user/bigquery_job_failure_count\""
+      duration        = "60s"
       comparison      = "COMPARISON_GT"
       threshold_value = 0
-      duration        = "60s"
-
       aggregations {
-        alignment_period   = "60s"
-        per_series_aligner = "ALIGN_DELTA"
+        alignment_period     = "60s"
+        per_series_aligner   = "ALIGN_SUM"
+        cross_series_reducer = "REDUCE_NONE"
       }
     }
   }
 
+  notification_channels = [google_monitoring_notification_channel.email_channel.id]
+
   documentation {
-    content = "BigQuery job failures detected in the last minute."
+    content   = "A BigQuery job failure has been detected."
+    mime_type = "text/markdown"
   }
 
-  alert_strategy {
-    notification_rate_limit {
-      period = "3600s" # 1 notification per hour
-    }
+  user_labels = {
+    environment = "dev"
   }
-
-  enabled = true
 }
